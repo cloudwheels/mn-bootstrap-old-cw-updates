@@ -1,4 +1,32 @@
-# MN Bootstrap
+# MN Bootstrap (cloudwheels)
+
+This is a fork of [https://github.com/dashevo/mn-bootstrap](https://github.com/dashevo/mn-bootstrap). The [Orignal README is below](#original-readme)
+
+## Purpose
+
+Setup a basic containerised (Docker) Dash network as a LOCAL environment to develop / experiment with the Dash evolution platform.
+
+The orignal repo is a bit out of date, particularly with the information on setting up a masternode (MN). A MN is required to run the Distributed API (DAPI).
+
+### Disclaimer
+
+***Experimental, personal, unstable and strictly for development purposes only (if at all)***
+
+### Updates / Status
+
+- This is currently very much WORK IN PROGRESS!
+- So far I have:
+    - Documented (roughly) my [inital experience at setting up a masternode](cloudwheels-adventures.md)
+    - Made some changes to the Docker setup: mainly adding another Dash core service to the network to use as a wallet, so that the intial core can be set up as a masternode. This container is named "qt" after the core wallet, although it is running as a server.
+    - started a [shell script](setup.sh) to (a) extend / modify the original wrapper around Docker compose and (b) script some of the masternode setup process using the available RPC api.
+
+
+
+---
+
+## Original README
+
+## MN Bootstrap
 
 ### Pre-requisites to be Installed
 
