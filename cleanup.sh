@@ -12,4 +12,7 @@ shift 1
 
 sudo su <<HERE
 rm -rf ./data/core-regtest
+rm -rf ./data/core-$NETWORK
+rm -rf ./data/qt-$NETWORK
+
 HERE

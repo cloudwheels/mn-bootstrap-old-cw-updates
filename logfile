@@ -1,0 +1,13 @@
+
+
+
+
+curl -s --user dashrpc:password --data-binary '''
+{     
+    "method": "getblockhash",
+    "params": [0],
+    "id": "getGenesisBlockhash"
+}''' \
+--header 'Content-Type: text/plain;' localhost:20002
+
+
