@@ -16,7 +16,7 @@ main()
 ipAddressCore=$(sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mn-bootstrap-devnet-dashevo1_core_1)
 echo "MN Core server docker bridge IP: $ipAddressCore"
 portCore=20001
-ipAndPort=$ipAddressCore:$portCore
+# ipAndPort=$ipAddressCore:$portCore ## MAY BE REASON FOR ERROR 16 BAD TX ADDRESS
 ipAddressQt=""
 operatorReward=0
 
@@ -130,7 +130,10 @@ generate() #amount
 
 echo "Mine some tDash"
 echo "Because of no of conformations needed to get spendable balance, use mine 500"
-generate 1
+########################
+# TODO : CHANGE BACK TO 500
+#######################
+generate 500
 rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams
 
 # The result will be an array of all the block hashes
@@ -168,10 +171,16 @@ sendToAddress $collateralAddress 1000
 rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams 
 echo "$rpcid result $rpc"
 
+echo "sending 100 tDash to the payoutAddress $payoutAddress - needs a balance tp cover tx fees"
+
+sendToAddress $payoutAddress 100
+rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams 
+echo "$rpcid result $rpc"
+
 # Mine this transaction
 # Must have at least ?8 confirmations, TODO: check
 # So mine 10...
-echo "Mining..."
+echo "Mine these transactions. Generate 10 blocks to ensure sufficient confirmations...."
 generate 10
 rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams
 # The result will be an array of all the block hashes
@@ -277,9 +286,17 @@ rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams
 
 
 ##TEMP UNTIL ARRAY OF COLLATERAL HASH SORTED
-collateralIndex = 1
+# collateralIndex = 1
 ######
 ## RENAME masternodeblspublickey as operatorPubKey
+
+###
+#
+#  USE A PUBLIC IP !!!!! 
+# ?MAY WORK WITH A 0    
+###
+
+ipAndPort=90.248.164.208:20001
 
 
 echo "Prepare a ProRegTx transaction"
@@ -294,7 +311,7 @@ echo "votingKeyAddress: $votingKeyAddress"
 echo "operatorReward: $operatorReward"
 echo "payoutAddress: $payoutAddress"
 
-protx() 
+protxRegisterPrepare() 
 # "register_prepare"
 # collateralHash
 # collateralIndex
@@ -305,29 +322,101 @@ protx()
 # operatorReward
 # payoutAddress
 {   
-    rpcid="protx"
+    rpcid="protxRegisterPrepare"
     rpcMethod="protx"
-    rpcParams="\"$1\",\"$2\",$3,$4,\"$5\",\"$6\",\"$7\",$8,\"$9\""
+    rpcParams="\"$1\",\"$2\",$3,\"$4\",\"$5\",\"$6\",\"$7\",$8,\"$9\""
 }
 
 
 
-protx "register_prepare" $collateralHash 1 $ipAndPort $ownerKeyAddress $masternodeblspublickey $votingKeyAddress $operatorReward $payoutAddress
+protxRegisterPrepare "register_prepare" $collateralHash $collateralIndex $ipAndPort $ownerKeyAddress $masternodeblspublickey $votingKeyAddress $operatorReward $payoutAddress
 rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams 
 
 #an array??? (only if run mutlple times or by coincience of mining  rewards) 
 # - split result and use fuirst suitable
- echo "protx register_prepare result $rpc"
+echo "protx register_prepare result $rpc"
+echo
+protxHash=$( echo $rpc  | jq -r '.tx' )
+# collateralAddress should match the funded address above
+collateralAddressCheck=$( echo $rpc  | jq -r '.collateralAddress' )
+signMessage=$( echo $rpc  | jq -r '.signMessage' )
+
+echo "protx prepare variables:"
+echo "protxHash: $protxHash"
+echo "collateralAddressCheck: $collateralAddressCheck"
+echo "signMessage: $signMessage"
+
+
+# Sign the ProRegTx transaction
+
+echo "Sign the ProRegTx transaction"
+
+# Get private key of collateralAddress 
+
+echo "! Instructions imply that we need to get the private key of collateralAddress $collateralAddress"
+
+# dumpprivkey() #address
+# {   
+#    rpcid="dumpprivkey"
+#    rpcMethod="dumpprivkey"
+#    rpcParams="\"$1\""
+# }
+
+# dumpprivkey $collateralAddress
+# rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams
+
+#an array??? (only if run mutlple times or by coincience of mining  rewards) 
+# - split result and use fuirst suitable
+# collateralAddressPrivateKey=$( echo $rpc)
+# echo "dumpprivkey result $collateralAddressPrivateKey"
+
+# echo "* SIGNING WITH THIS PRIVATE KEY CREATES ERROR code:-3,message:Invalid address *"
+# echo "* SIGN WITH PUBLIC KEY / ADDRESS INSTEAD *"
+
+# signmessage
+echo "sign the protx message"
+echo "signmessage collateralAddress signMessage"
+
+signmessage() 
+# "collateralAddressPrivateKey" / collateralAddress
+# signMessage
+{   
+    rpcid="signmessage"
+    rpcMethod="signmessage"
+    rpcParams="\"$1\",\"$2\""
+}
+signmessage $collateralAddress $signMessage
+rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams
+
+signedMessageHash=$( echo $rpc)
+echo "signedMessageHash result $signedMessageHash"
+
+
+# Submit the signed message
+
+echo "Submit the signed message"
+
+protxRegisterSubmit() 
+# "register_prepare"
+# protxHash
+# signedMessageHash
+
+{   
+    rpcid="protxRegisterSubmit"
+    rpcMethod="protx"
+    rpcParams="\"$1\",\"$2\",\"$3\""
+}
 
 
 
+protxRegisterSubmit "register_submit" $protxHash $signedMessageHash 
+rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams 
 
+#an array??? (only if run mutlple times or by coincience of mining  rewards) 
+# - split result and use fuirst suitable
+echo "protxRegisterSubmit result $rpc"
 
-
-
-
-
-
+echo "STUCK HERE - gives the error bad-protx-addr (code 16)"
 
 
 

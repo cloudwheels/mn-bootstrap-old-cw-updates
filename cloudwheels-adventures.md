@@ -299,6 +299,106 @@ sig: The message signed with the collateral key from the signmessage command
 
 `protx register_submit 0300010001407140473922bab1f86ca08ac937b9de5124ee20c956484aedd3c33babd2037d0100000000feffffff0121ceed902e0000001976a91429796ff78c0c75999fcbcf65d6bc1c1316245f2e88ac00000000d10100000000007d216a39c66afb628bfd4998b2174f0d1c138ea3561ab27a48e91b3b862985b40100000000000000000000000000ffffac1400034e21ccd8e294df3760d288a9fc9238f4e22aadc1066385c263806ef7b03ecbe2e6dde55e9c2d523373f5bc77a71561e657167c9dacd6d06f422da88532a63a3f7cc8c36c41b13af2ad3904531e4e5e05e8f403ae0229f735915700001976a91429796ff78c0c75999fcbcf65d6bc1c1316245f2e88acd818f1d6ccf023fd6a51329832ff148530ddb8df62476633dd15ba8e6271d35900 IHduLGAuiYVbeI/Z+c7K5QITL3HdhHq5wYBaFjUbljNiZd+Kn9r94gjLXUoL0S1gFe+tKnBcbPwRHFGzw1KcBZY=`
 
+### bad-protx-addr (code 16)
+
+3 possible reasons.
+
+Suugests the IP address is the problem
+
+https://github.com/dashpay/dash/blob/7d8eab2641023c78a72ccd6efc99fc35fd030a46/src/evo/providertx.cpp#L23-L28
+
+```
+    if (!proTx.addr.IsValid()) {
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-addr");
+    }
+    if (Params().NetworkIDString() != CBaseChainParams::REGTEST && !proTx.addr.IsRoutable()) {
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-addr");
+    }
+```
+https://github.com/dashpay/dash/blob/7d8eab2641023c78a72ccd6efc99fc35fd030a46/src/evo/providertx.cpp#L39-L41
+
+```
+    if (!proTx.addr.IsIPv4()) {
+        return state.DoS(10, false, REJECT_INVALID, "bad-protx-addr");
+    }
+```
+
+### Net address validation src/netaddress.cpp
+
+https://github.com/dashpay/dash/blob/master/src/netaddress.cpp#L191-L225
+
+
+
+### IsValid
+
+https://github.com/dashpay/dash/blob/7d8eab2641023c78a72ccd6efc99fc35fd030a46/src/netaddress.cpp#L191-L225
+
+```
+bool CNetAddr::IsValid() const
+{
+    // Cleanup 3-byte shifted addresses caused by garbage in size field
+    // of addr messages from versions before 0.2.9 checksum.
+    // Two consecutive addr messages look like this:
+    // header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
+    // so if the first length field is garbled, it reads the second batch
+    // of addr misaligned by 3 bytes.
+    if (memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        return false;
+
+
+    // unspecified IPv6 address (::/128)
+    unsigned char ipNone6[16] = {};
+    if (memcmp(ip, ipNone6, 16) == 0)
+        return false;
+
+
+    // documentation IPv6 address
+    if (IsRFC3849())
+        return false;
+
+
+    if (IsIPv4())
+    {
+        // INADDR_NONE
+        uint32_t ipNone = INADDR_NONE;
+        if (memcmp(ip+12, &ipNone, 4) == 0)
+            return false;
+
+
+        // 0
+        ipNone = 0;
+        if (memcmp(ip+12, &ipNone, 4) == 0)
+            return false;
+    }
+
+
+    return true;
+}
+```
+
+
+
+
+### IsRoutable
+
+https://github.com/dashpay/dash/blob/7d8eab2641023c78a72ccd6efc99fc35fd030a46/src/netaddress.cpp#L227-L234
+
+```
+bool CNetAddr::IsRoutable() const
+{
+    if (!IsValid())
+        return false;
+    if (!fAllowPrivateNet && IsRFC1918())
+        return false;
+    return !(IsRFC2544() || IsRFC3927() || IsRFC4862() || IsRFC6598() || IsRFC5737() || (IsRFC4193() && !IsTor()) || IsRFC4843() || IsLocal());
+}
+```
+
+
+
+
+
+
 
 ## Utils
 
