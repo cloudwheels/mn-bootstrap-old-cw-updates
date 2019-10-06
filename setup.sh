@@ -15,32 +15,36 @@ main()
 
 ipAddressCore=$(sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mn-bootstrap-devnet-dashevo1_core_1)
 echo "MN Core server docker bridge IP: $ipAddressCore"
-
+portCore=20001
+ipAndPort=$ipAddressCore:$portCore
 ipAddressQt=""
+operatorReward=0
 
 ########################################
 # JSON RPC CALLS
 ########################################
 
-    rpccall() #id  #user #port #method #params #debug
-    {
-        
-    echo "rpc called with id $1, user $2, port $3, method $4, params $5"
-    #if [ $6 -eq 1 ]
-    #then
-    #    rpc=$(curl -s --user $2 --data-binary '''{"method": "'''$4'''","params": ['''$5'''],"id": "'''$1'''"}''' --header 'Content-Type: text/plain;' localhost:$3)
-    #else
-        rpc=$(curl -s --user $2 --data-binary '''{"method": "'''$4'''","params": ['''$5'''],"id": "'''$1'''"}''' --header 'Content-Type: text/plain;' localhost:$3 | jq -r '.result')
-    #fi
-        
-        
-    }
+rpccall() #id  #user #port #method #params #debug
+{
+## TODO : Fix passing a debug parameter
+## TODO : handle errors  
+## TODO : check actual message generated 
+echo "rpc called with id $1, user $2, port $3, method $4, params $5"
+#if [ $6 -eq 1 ] # debug
+#then
+#   rpc=$(curl -s --user $2 --data-binary '''{"method": "'''$4'''","params": ['''$5'''],"id": "'''$1'''"}''' --header 'Content-Type: text/plain;' localhost:$3)
+#else
+    rpc=$(curl -s --user $2 --data-binary '''{"method": "'''$4'''","params": ['''$5'''],"id": "'''$1'''"}''' --header 'Content-Type: text/plain;' localhost:$3 | jq -r '.result')
+#fi
+    
+    
+}
 
-    # rpc defaults
+# rpc defaults
 
-    rpcUser="dashrpc:password"
-    rpcPortCore=20002
-    rpcPortQt=20012
+rpcUser="dashrpc:password"
+rpcPortCore=20002
+rpcPortQt=20012
 
 
 # set these global varibles in a method
@@ -222,6 +226,109 @@ collateralIndex=$( echo  $rpc | cut -d ":" -f 2 | cut -d "}" -f 1  | xargs )
 
 echo "collateralHash: $collateralHash"
 echo "collateralIndex:  $collateralIndex"
+
+
+# Generate BLS key
+
+######
+# DOES THIS NEEDS TO BE DONE ON THE MASTERNODE ???
+######
+
+# for now, run  on the wallet
+
+# Create a BLS secret/public key pair using bls generate
+echo "Create a BLS secret/public key pair"
+  
+bls() #"generate"
+{   
+    rpcid="bls"
+    rpcMethod="bls"
+    rpcParams="$1"
+}
+
+bls "\"generate\""
+rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams
+
+#an array??? (only if run mutlple times or by coincience of mining  rewards) 
+# - split result and use fuirst suitable
+ echo "bls generate result $rpc"
+
+ masternodeblsprivkey=$( echo $rpc  | jq -r '.secret' ) 
+ masternodeblspublickey=$( echo $rpc  | jq -r '.public' )
+
+ echo "masternodeblsprivkey: $masternodeblsprivkey"
+ echo "masternodeblspublickey: $masternodeblspublickey"
+
+############
+# TODO: add keys to the masternode server / update conf
+#
+# masternode=1
+# masternodeblsprivkey=$masternodeblsprivkey
+#
+# also update public port ? to $ipAddressCore
+# 
+# RESTART MN
+# ?Loses connection to network as peer?
+############
+
+
+# Prepare a ProRegTx transaction
+# protx register_prepare collateralHash collateralIndex ipAndPort ownerKeyAddress operatorPubKey votingKeyAddress operatorReward payoutAddress
+
+
+##TEMP UNTIL ARRAY OF COLLATERAL HASH SORTED
+collateralIndex = 1
+######
+## RENAME masternodeblspublickey as operatorPubKey
+
+
+echo "Prepare a ProRegTx transaction"
+echo 
+echo "Inputs for ProRegTx: "
+echo "collateralHash: $collateralHash"
+echo "collateralIndex: $collateralIndex"
+echo "ipAndPort: $ipAndPort"
+echo "ownerKeyAddress: $ownerKeyAddress"
+echo "operatorPubKey: $operatorPubKey"
+echo "votingKeyAddress: $votingKeyAddress"
+echo "operatorReward: $operatorReward"
+echo "payoutAddress: $payoutAddress"
+
+protx() 
+# "register_prepare"
+# collateralHash
+# collateralIndex
+# ipAndPort
+# ownerKeyAddress
+# operatorPubKey
+# votingKeyAddress
+# operatorReward
+# payoutAddress
+{   
+    rpcid="protx"
+    rpcMethod="protx"
+    rpcParams="\"$1\",\"$2\",$3,$4,\"$5\",\"$6\",\"$7\",$8,\"$9\""
+}
+
+
+
+protx "register_prepare" $collateralHash 1 $ipAndPort $ownerKeyAddress $masternodeblspublickey $votingKeyAddress $operatorReward $payoutAddress
+rpccall $rpcid $rpcUser $rpcPortQt $rpcMethod $rpcParams 
+
+#an array??? (only if run mutlple times or by coincience of mining  rewards) 
+# - split result and use fuirst suitable
+ echo "protx register_prepare result $rpc"
+
+
+
+
+
+
+
+
+
+
+
 
 
 
