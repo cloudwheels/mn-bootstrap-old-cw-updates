@@ -407,3 +407,4 @@ bool CNetAddr::IsRoutable() const
 ```
 sudo docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mn-bootstrap-devnet-dashevo1_core_1
 ```
+

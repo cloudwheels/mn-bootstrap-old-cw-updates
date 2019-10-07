@@ -28,6 +28,8 @@ The orignal repo is a bit out of date, particularly with the information on sett
 
     The shell script now automates the startup/teardown of docker services and the protx masternode registration process. TODO is adding the config to the MN server and rebooting, rather than doing it manually. 
 
+    - remove or comment out masternode lines from .data/dash.conf before running the script
+
 
 ---
 
